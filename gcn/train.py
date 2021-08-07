@@ -59,7 +59,10 @@ placeholders = {
 model = model_func(placeholders, input_dim=features[2][1], logging=True)
 
 # Initialize session
-sess = tf.Session()
+memory_config = tf.ConfigProto(gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.4))
+
+memory_config.gpu_options.allow_growth = False
+sess = tf.Session(config=memory_config)
 
 
 # Define model evaluation function
@@ -75,9 +78,14 @@ sess.run(tf.global_variables_initializer())
 
 cost_val = []
 
+time_p = 0
+cnt = 0
 # Train model
 for epoch in range(FLAGS.epochs):
-
+    cnt +=1
+    if cnt % 100 ==0:
+        print("Time: ", time_p)
+        time_p = 0
     t = time.time()
     # Construct feed dictionary
     feed_dict = construct_feed_dict(features, support, y_train, train_mask, placeholders)
@@ -89,15 +97,12 @@ for epoch in range(FLAGS.epochs):
     # Validation
     cost, acc, duration = evaluate(features, support, y_val, val_mask, placeholders)
     cost_val.append(cost)
-
+    time_p += time.time() - t
     # Print results
-    print("Epoch:", '%04d' % (epoch + 1), "train_loss=", "{:.5f}".format(outs[1]),
-          "train_acc=", "{:.5f}".format(outs[2]), "val_loss=", "{:.5f}".format(cost),
-          "val_acc=", "{:.5f}".format(acc), "time=", "{:.5f}".format(time.time() - t))
+    # print("Epoch:", '%04d' % (epoch + 1), "train_loss=", "{:.5f}".format(outs[1]),
+    #       "train_acc=", "{:.5f}".format(outs[2]), "val_loss=", "{:.5f}".format(cost),
+    #       "val_acc=", "{:.5f}".format(acc), "time=", "{:.5f}".format(time.time() - t))
 
-    if epoch > FLAGS.early_stopping and cost_val[-1] > np.mean(cost_val[-(FLAGS.early_stopping+1):-1]):
-        print("Early stopping...")
-        break
 
 print("Optimization Finished!")
 
